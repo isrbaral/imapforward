@@ -34,13 +34,42 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
                     <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z"/>
                     <path d="M19 8.839l-7.556 3.778a2.75 2.75 0 01-2.888 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z"/>
                   </svg>
-                  Target (Gmail)
+                  Target
                 </legend>
+
+                <div class="form-row">
+                  <div class="field">
+                    <label>Forwarding Method *</label>
+                    <div class="method-toggle">
+                      <label class="radio-label">
+                        <input type="radio" formControlName="forwardMethod" value="imap" />
+                        <span>IMAP Append</span>
+                      </label>
+                      <label class="radio-label">
+                        <input type="radio" formControlName="forwardMethod" value="smtp" />
+                        <span>SMTP Forward</span>
+                      </label>
+                      <label class="radio-label">
+                        <input type="radio" formControlName="forwardMethod" value="gmail-api" />
+                        <span>Gmail API</span>
+                      </label>
+                    </div>
+                    <span class="hint">
+                      @switch (form.get('forwardMethod')?.value) {
+                        @case ('smtp') { Forwards via SMTP — enables spam filtering, adds Reply-To for replies }
+                        @case ('gmail-api') { Gmail API import — preserves all headers AND runs spam filters (requires OAuth2 setup) }
+                        @default { Appends raw message via IMAP — preserves all headers, bypasses spam filters }
+                      }
+                    </span>
+                  </div>
+                </div>
                 <div formGroupName="target">
+                  @if (form.get('forwardMethod')?.value !== 'gmail-api') {
                   <div class="form-row">
                     <div class="field">
                       <label for="t-host">Host *</label>
-                      <input id="t-host" formControlName="host" placeholder="imap.gmail.com" />
+                      <input id="t-host" formControlName="host"
+                        [placeholder]="form.get('forwardMethod')?.value === 'smtp' ? 'smtp.gmail.com' : 'imap.gmail.com'" />
                     </div>
                     <div class="field field-sm">
                       <label for="t-port">Port *</label>
@@ -54,23 +83,58 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
                       </label>
                     </div>
                   </div>
+                  }
                   <div formGroupName="auth" class="form-row">
                     <div class="field">
-                      <label for="t-user">Username *</label>
+                      <label for="t-user">Email *</label>
                       <input id="t-user" formControlName="user" placeholder="your-email&#64;gmail.com" />
                     </div>
+                    @if (form.get('forwardMethod')?.value !== 'gmail-api') {
                     <div class="field">
                       <label for="t-pass">App Password *</label>
                       <input id="t-pass" type="password" formControlName="pass"
                         placeholder="your-app-password" autocomplete="off" />
                     </div>
+                    }
                   </div>
+                  @if (form.get('forwardMethod')?.value === 'gmail-api') {
+                  <div formGroupName="gmailApi">
+                    <div class="form-row">
+                      <div class="field">
+                        <label for="t-client-id">Client ID *</label>
+                        <input id="t-client-id" formControlName="clientId"
+                          placeholder="your-client-id.apps.googleusercontent.com" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field">
+                        <label for="t-client-secret">Client Secret *</label>
+                        <input id="t-client-secret" type="password" formControlName="clientSecret"
+                          placeholder="your-client-secret" autocomplete="off" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field">
+                        <label for="t-refresh-token">Refresh Token *</label>
+                        <input id="t-refresh-token" type="password" formControlName="refreshToken"
+                          placeholder="your-refresh-token" autocomplete="off" />
+                        <span class="hint">Run <code>imapforward -auth -auth-client-id &lt;ID&gt; -auth-client-secret &lt;SECRET&gt;</code></span>
+                      </div>
+                    </div>
+                  </div>
+                  }
+                  @if (form.get('forwardMethod')?.value !== 'gmail-api') {
                   <div class="form-row">
                     <div class="field">
                       <label for="t-folder">Folder</label>
-                      <input id="t-folder" formControlName="folder" placeholder="INBOX" />
+                      <input id="t-folder" formControlName="folder" placeholder="INBOX"
+                        [class.field-disabled]="form.get('forwardMethod')?.value === 'smtp'" />
+                      @if (form.get('forwardMethod')?.value === 'smtp') {
+                        <span class="hint">Not used with SMTP forwarding</span>
+                      }
                     </div>
                   </div>
+                  }
                 </div>
               </fieldset>
 
@@ -134,6 +198,14 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
                             placeholder="INBOX, Important" />
                           <span class="hint">Comma-separated list</span>
                         </div>
+                        <div class="field">
+                          <label [for]="'s-targetFolder-' + i">Target Folder</label>
+                          <input [id]="'s-targetFolder-' + i" formControlName="targetFolder"
+                            placeholder="Import/Work" />
+                          <span class="hint">Override target mailbox for this source (IMAP only)</span>
+                        </div>
+                      </div>
+                      <div class="form-row">
                         <div class="field field-xs">
                           <label class="toggle-label">
                             <input type="checkbox" formControlName="deleteAfterForward" />
@@ -220,7 +292,13 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
     .form-panel {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      gap: 1rem;
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
     }
 
     fieldset {
@@ -260,7 +338,7 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
       flex: 1;
       min-width: 140px;
 
-      label:not(.toggle-label) {
+      label:not(.toggle-label):not(.radio-label) {
         display: block;
         font-size: 0.8rem;
         color: var(--text-secondary);
@@ -315,6 +393,35 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
       display: flex;
       align-items: flex-end;
       padding-bottom: 0.55rem;
+    }
+
+    .field-disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .method-toggle {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.2rem;
+    }
+
+    .radio-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      user-select: none;
+
+      input[type="radio"] {
+        accent-color: var(--accent);
+        margin: 0;
+        width: 0.95rem;
+        height: 0.95rem;
+        flex-shrink: 0;
+      }
     }
 
     .toggle-label {
@@ -428,6 +535,7 @@ const IMPLICIT_TLS_PORTS = new Set([465, 993]);
     /* --- Preview Panel --- */
     .preview-panel {
       position: relative;
+      padding-top: 0.6rem;
     }
 
     .preview-sticky {
@@ -533,6 +641,7 @@ export class ConfigTool {
   protected readonly copied = signal(false);
 
   protected readonly form = this.fb.group({
+    forwardMethod: ['imap'],
     target: this.fb.group({
       host: ['imap.gmail.com', Validators.required],
       port: [993, [Validators.required]],
@@ -542,10 +651,57 @@ export class ConfigTool {
         pass: ['', Validators.required],
       }),
       folder: ['INBOX'],
+      gmailApi: this.fb.group({
+        clientId: [''],
+        clientSecret: [''],
+        refreshToken: [''],
+      }),
     }),
     sources: this.fb.array([this.createSource()]),
-
   });
+
+  constructor() {
+    this.form.get('forwardMethod')?.valueChanges.subscribe((method) => {
+      const target = this.form.get('target')!;
+      const pass = target.get('auth.pass')!;
+      const host = target.get('host')!;
+      const port = target.get('port')!;
+      const clientId = target.get('gmailApi.clientId')!;
+      const clientSecret = target.get('gmailApi.clientSecret')!;
+      const refreshToken = target.get('gmailApi.refreshToken')!;
+
+      if (method === 'gmail-api') {
+        pass.clearValidators();
+        host.clearValidators();
+        port.clearValidators();
+        clientId.setValidators(Validators.required);
+        clientSecret.setValidators(Validators.required);
+        refreshToken.setValidators(Validators.required);
+      } else {
+        pass.setValidators(Validators.required);
+        host.setValidators(Validators.required);
+        port.setValidators(Validators.required);
+        clientId.clearValidators();
+        clientSecret.clearValidators();
+        refreshToken.clearValidators();
+        if (method === 'smtp') {
+          host.setValue('smtp.gmail.com');
+          port.setValue(587);
+          target.get('secure')?.setValue(true);
+        } else {
+          host.setValue('imap.gmail.com');
+          port.setValue(993);
+          target.get('secure')?.setValue(true);
+        }
+      }
+      pass.updateValueAndValidity();
+      host.updateValueAndValidity();
+      port.updateValueAndValidity();
+      clientId.updateValueAndValidity();
+      clientSecret.updateValueAndValidity();
+      refreshToken.updateValueAndValidity();
+    });
+  }
 
   private readonly formValue = toSignal(
     this.form.valueChanges.pipe(startWith(this.form.getRawValue())),
@@ -556,31 +712,51 @@ export class ConfigTool {
     const v = this.formValue();
     if (!v) return '';
 
-    const config: Record<string, unknown> = {
-      target: {
+    const method = v.forwardMethod || 'imap';
+    const isGmailApi = method === 'gmail-api';
+
+    const target: Record<string, unknown> = {
+      ...(isGmailApi ? {} : {
         host: v.target?.host || '',
         port: Number(v.target?.port) || 993,
         secure: v.target?.secure ?? true,
-        auth: {
-          user: v.target?.auth?.user || '',
-          pass: v.target?.auth?.pass || '',
-        },
-        ...(v.target?.folder && v.target.folder !== 'INBOX'
-          ? {folder: v.target.folder}
-          : {}),
+      }),
+      auth: {
+        user: v.target?.auth?.user || '',
+        ...(isGmailApi ? {} : {pass: v.target?.auth?.pass || ''}),
       },
-      sources: (v.sources ?? []).map((s) => ({
-        name: s?.name || '',
-        host: s?.host || '',
-        port: Number(s?.port) || 993,
-        secure: s?.secure ?? true,
-        auth: {
-          user: s?.auth?.user || '',
-          pass: s?.auth?.pass || '',
+      ...(method === 'imap' && v.target?.folder && v.target.folder !== 'INBOX'
+        ? {folder: v.target.folder}
+        : {}),
+    };
+
+    const gmailApi = (v.target as Record<string, unknown>)?.['gmailApi'] as Record<string, string> | undefined;
+    const config: Record<string, unknown> = {
+      target,
+      ...(method !== 'imap' ? {forwardMethod: method} : {}),
+      ...(isGmailApi && gmailApi ? {
+        gmailApi: {
+          clientId: gmailApi['clientId'] || '',
+          clientSecret: gmailApi['clientSecret'] || '',
+          refreshToken: gmailApi['refreshToken'] || '',
         },
-        folders: this.parseFolders(s?.folders as string),
-        deleteAfterForward: s?.deleteAfterForward ?? false,
-      })),
+      } : {}),
+      sources: (v.sources ?? []).map((s) => {
+        const tf = (s as Record<string, unknown>)?.['targetFolder'] as string | undefined;
+        return {
+          name: s?.name || '',
+          host: s?.host || '',
+          port: Number(s?.port) || 993,
+          secure: s?.secure ?? true,
+          auth: {
+            user: s?.auth?.user || '',
+            pass: s?.auth?.pass || '',
+          },
+          folders: this.parseFolders(s?.folders as string),
+          deleteAfterForward: s?.deleteAfterForward ?? false,
+          ...(tf ? {targetFolder: tf} : {}),
+        };
+      }),
     };
 
     return JSON.stringify(config, null, 2);
@@ -606,6 +782,7 @@ export class ConfigTool {
       }),
       folders: ['INBOX'],
       deleteAfterForward: [false],
+      targetFolder: [''],
     });
   }
 

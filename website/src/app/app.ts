@@ -45,9 +45,11 @@ import {ConfigTool} from './components/config-tool';
         <span class="footer-links">
           <a href="https://github.com/sinedied/imapforward" target="_blank" rel="noopener">GitHub</a>
           <span class="sep">&middot;</span>
-          <a href="https://www.npmjs.com/package/imapforward" target="_blank" rel="noopener">npm</a>
-          <span class="sep">&middot;</span>
           <a href="https://github.com/sinedied/imapforward/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+          <span class="sep">&middot;</span>
+          <a href="terms.html">Terms</a>
+          <span class="sep">&middot;</span>
+          <a href="privacy.html">Privacy</a>
         </span>
       </div>
     </footer>

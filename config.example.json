@@ -8,6 +8,7 @@
       "pass": "your-app-password"
     }
   },
+  "forwardMethod": "imap",
   "sources": [
     {
       "name": "Work Email",
@@ -19,7 +20,8 @@
         "pass": "password"
       },
       "folders": ["INBOX"],
-      "deleteAfterForward": false
+      "deleteAfterForward": false,
+      "targetFolder": "Import/Work"
     },
     {
       "name": "Personal Email",
@@ -31,7 +33,8 @@
         "pass": "password"
       },
       "folders": ["INBOX", "Important"],
-      "deleteAfterForward": true
+      "deleteAfterForward": true,
+      "targetFolder": "Import/Personal"
     }
   ],
   "healthCheck": {
